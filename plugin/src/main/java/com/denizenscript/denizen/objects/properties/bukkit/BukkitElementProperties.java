@@ -16,10 +16,10 @@ import com.denizenscript.denizencore.objects.Mechanism;
 import com.denizenscript.denizencore.objects.ObjectTag;
 import com.denizenscript.denizencore.objects.properties.Property;
 import com.denizenscript.denizencore.scripts.ScriptRegistry;
+import com.google.common.io.BaseEncoding;
 import net.md_5.bungee.chat.ComponentSerializer;
 import net.md_5.bungee.api.ChatColor;
 
-import javax.xml.bind.DatatypeConverter;
 import java.nio.charset.StandardCharsets;
 
 public class BukkitElementProperties implements Property {
@@ -324,7 +324,7 @@ public class BukkitElementProperties implements Property {
         PropertyParser.<BukkitElementProperties>registerTag("to_secret_colors", (attribute, object) -> {
             String text = object.asString();
             byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-            String hex = DatatypeConverter.printHexBinary(bytes);
+            String hex = BaseEncoding.base16().upperCase().encode(bytes);
             StringBuilder colors = new StringBuilder(text.length() * 2);
             for (int i = 0; i < hex.length(); i++) {
                 colors.append(ChatColor.COLOR_CHAR).append(hex.charAt(i));
@@ -342,7 +342,7 @@ public class BukkitElementProperties implements Property {
         // -->
         PropertyParser.<BukkitElementProperties>registerTag("from_secret_colors", (attribute, object) -> {
             String text = object.asString().replace(String.valueOf(ChatColor.COLOR_CHAR), "");
-            byte[] bytes = DatatypeConverter.parseHexBinary(text);
+            byte[] bytes = BaseEncoding.base16().upperCase().decode(text);
             return new ElementTag(new String(bytes, StandardCharsets.UTF_8));
         });
 
