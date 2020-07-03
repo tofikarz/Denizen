@@ -1,5 +1,6 @@
 package com.denizenscript.denizen.flags;
 
+import com.denizenscript.denizen.events.flags.FlagModificationEvent;
 import com.denizenscript.denizen.objects.EntityTag;
 import com.denizenscript.denizen.objects.NPCTag;
 import com.denizenscript.denizen.objects.PlayerTag;
@@ -19,6 +20,8 @@ import com.denizenscript.denizencore.tags.TagContext;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizencore.utilities.debugging.SlowWarning;
 import com.denizenscript.denizencore.utilities.debugging.Warning;
+import net.citizensnpcs.api.CitizensAPI;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemorySection;
 
@@ -84,7 +87,7 @@ public class FlagManager {
      * it will be created with blank values.
      */
     public Flag getNPCFlag(int npcid, String flagName) {
-        return new Flag("NPCs." + npcid + ".Flags." + flagName.toUpperCase(), flagName, "n@" + npcid);
+        return new Flag(NPCTag.mirrorCitizensNPC(CitizensAPI.getNPCRegistry().getById(npcid)), "NPCs." + npcid + ".Flags." + flagName.toUpperCase(), flagName, "n@" + npcid);
     }
 
     /**
@@ -93,7 +96,7 @@ public class FlagManager {
      * it will be created with blank values.
      */
     public Flag getGlobalFlag(String flagName) {
-        return new Flag("Global.Flags." + flagName.toUpperCase(), flagName, "SERVER");
+        return new Flag(null, "Global.Flags." + flagName.toUpperCase(), flagName, "SERVER");
     }
 
     /**
@@ -103,16 +106,16 @@ public class FlagManager {
      */
     public Flag getPlayerFlag(PlayerTag player, String flagName) {
         if (player == null) {
-            return new Flag("players.00.UNKNOWN.Flags." + flagName.toUpperCase(), flagName, "p@null");
+            return new Flag(null, "players.00.UNKNOWN.Flags." + flagName.toUpperCase(), flagName, "p@null");
         }
-        return new Flag("Players." + player.getSaveName() + ".Flags." + flagName.toUpperCase(), flagName, player.identify());
+        return new Flag(player, "Players." + player.getSaveName() + ".Flags." + flagName.toUpperCase(), flagName, player.identify());
     }
 
     public Flag getEntityFlag(EntityTag entity, String flagName) {
         if (entity == null) {
-            return new Flag("Entities.00.UNKNOWN.Flags." + flagName.toUpperCase(), flagName, "e@null");
+            return new Flag(null, "Entities.00.UNKNOWN.Flags." + flagName.toUpperCase(), flagName, "e@null");
         }
-        return new Flag("Entities." + entity.getSaveName() + ".Flags." + flagName.toUpperCase(), flagName, entity.identify());
+        return new Flag(entity, "Entities." + entity.getSaveName() + ".Flags." + flagName.toUpperCase(), flagName, entity.identify());
     }
 
     /**
@@ -180,13 +183,16 @@ public class FlagManager {
     public class Flag {
 
         private Value value;
+        private final ObjectTag flagOwnerTag;
         private String flagPath;
         private String flagName;
         private String flagOwner;
         private long expiration = -1L;
         private boolean valid = true;
 
-        Flag(String flagPath, String flagName, String flagOwner) {
+        Flag(ObjectTag flagOwnerTag, String flagPath, String flagName,
+            String flagOwner) {
+            this.flagOwnerTag = flagOwnerTag;
             this.flagPath = flagPath;
             this.flagName = flagName;
             this.flagOwner = flagOwner;
@@ -303,6 +309,8 @@ public class FlagManager {
         public void set(Object obj, int index) {
             checkExpired();
 
+            FlagModificationEvent event = new FlagModificationEvent(flagOwnerTag, this, (String) obj);
+            Bukkit.getServer().getPluginManager().callEvent(event);
             // No index? Clear the flag and set the whole thing.
             if (index < 0) {
                 value.values = null;
